@@ -1,5 +1,5 @@
 T = readtable('train.csv');
-sample = datasample(T, 100, 'Replace', false);
+sample = datasample(T, 1000, 'Replace', false);
 date = datetime(sample.pickup_datetime, 'InputFormat', 'yyyy-MM-dd hh:mm:ss');
 
 sample_month = month(date);
@@ -9,7 +9,7 @@ sample_minute = minute(date);
 
 sample.Month = sample_month;
 sample.Day = sample_day;
-%sample.Hour = sample_hour;
+sample.Hour = sample_hour;
 sample.Time = (sample_hour + (sample_minute/60)); % this is the hour and minutes as fraction
 %hideRequirementColumn(sample, "pickup_datetime");
 sample.dropoff_datetime = [];
