@@ -29,6 +29,11 @@ lat_min = min(sample.pickup_latitude) - 0.05;
 lat_max = max(sample.pickup_latitude) + 0.05;
 
 figure;
+obj = VideoWriter('animation', 'MPEG-4');
+obj.Quality = 100;
+obj.FrameRate = 1.5;
+open(obj);
+
 for i = 0:23
     Idx = find(sample.Hour == i);
     lat = sample.pickup_latitude(Idx);
@@ -46,16 +51,21 @@ for i = 0:23
     title_string = ["All taxi pickups from sample, between: " times(i+1)];
     title(title_string, 'FontSize', 15);
 
+    f = getframe(gcf);
+    writeVideo(obj,f);
+
     pause(0.5);
 end
+
+obj.close();
 
 %% Descriptive statistics
 
 %Bar chart
-hour = 0:23;
+hour = 1:24;
 figure;
 bar(hour, total);
-xlabel('Hour of day (ranging from 0 to 23)');
+xlabel('Hour of day (ranging from the first hour to the twenty-fourth hour)');
 ylabel('Total number of pickups');
 title('Total number of pickups from sample dataset, during each hour', 'FontSize', 15);
 
