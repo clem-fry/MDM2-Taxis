@@ -28,7 +28,7 @@ lon_max = max(sample.pickup_longitude) + 0.05;
 lat_min = min(sample.pickup_latitude) - 0.05;
 lat_max = max(sample.pickup_latitude) + 0.05;
 
-figure;
+figure('units','normalized','outerposition',[0 0 1 1]);
 obj = VideoWriter('animation', 'MPEG-4');
 obj.Quality = 100;
 obj.FrameRate = 1.5;
@@ -63,7 +63,7 @@ obj.close();
 
 %Bar chart
 hour = 1:24;
-figure;
+figure('units','normalized','outerposition',[0 0 1 1]);
 bar(hour, total);
 xlabel('Hour of day (ranging from the first hour to the twenty-fourth hour)');
 ylabel('Total number of pickups');
