@@ -55,7 +55,12 @@ for i = 0:23
 
     %Second subplot
     subplot(1,2,2);
-    geodensityplot(lat, lon,'FaceColor','interp');
+    geodensityplot(lat, lon, 'FaceColor','interp');
+    %dp = geodensityplot(lat,lon);
+    gx = gca;
+    gx.AlphaScale = 'log';
+    %dp.FaceColor = 'interp';
+    colormap hot
     hold on;
     geobasemap('satellite');
     %geolimits([lat_min lat_max],[lon_min lon_max]);
