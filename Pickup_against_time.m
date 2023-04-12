@@ -2,7 +2,8 @@ clear all; close all; clc;
 warning off;
 
 %% Import sample data
-Data_clean;
+%Data_clean;
+sample = readtable('clean_train.csv');
 
 %% Define times
 times = [{'Midnight and 1am'}];
@@ -24,12 +25,13 @@ times = [times {'11pm and midnight'}];
 %% Begin geoscatter
 
 total = [];
-lon_min = min(sample.pickup_longitude) - 0.05;
-lon_max = max(sample.pickup_longitude) + 0.05;
-lat_min = min(sample.pickup_latitude) - 0.05;
-lat_max = max(sample.pickup_latitude) + 0.05;
+lat_min = 40.59;
+lat_max = 40.9;
+lon_min = -74.15;
+lon_max = -73.8;
 
 figure('units','normalized','outerposition',[0 0 1 1]);
+
 obj = VideoWriter('animation', 'MPEG-4');
 obj.Quality = 100;
 obj.FrameRate = 1.5;
@@ -46,9 +48,7 @@ for i = 0:23
     geoscatter(lat, lon, 'filled', 'LineWidth',1);
     hold on;
     geobasemap('satellite');
-    %geolimits([lat_min lat_max],[lon_min lon_max]);
-    %geolimits([40.69 40.8],[-74.05 -73.9]);
-    geolimits([40.59 40.9],[-74.15 -73.8]);
+    geolimits([lat_min lat_max],[lon_min lon_max]);
     hold off;
     legend('Taxi pickup points', 'FontSize', 15);
     title('All taxi pickups from sample, across the current hour', 'FontSize', 15);
@@ -63,9 +63,7 @@ for i = 0:23
     colormap hot
     hold on;
     geobasemap('satellite');
-    %geolimits([lat_min lat_max],[lon_min lon_max]);
-    %geolimits([40.69 40.8],[-74.05 -73.9]);
-    geolimits([40.59 40.9],[-74.15 -73.8]);
+    geolimits([lat_min lat_max],[lon_min lon_max]);
     hold off;
     legend('Pickup density', 'FontSize', 15);
     title('The density of taxi pickups from sample, across the current hour', 'FontSize', 15);
@@ -103,4 +101,54 @@ fprintf('The busiest time of day is between %s, with %d total pick-ups within th
 %Quietest time of day
 [min idx] = min(total);
 fprintf('The quietest time of day is between %s, with %d total pick-ups within this hour.\n', string(times(idx)) , min)
+
+
+%% Create a density matrix
+
+div = 100; %Number of divisions
+
+x = linspace(lon_min, lon_max, div);
+y = linspace(lat_min, lat_max, div);
+
+DensityMat = zeros(div, div, 24);
+
+for hour = 0:23
+    for i=1:(div-1)
+        for j = 1:(div-1)
+            idx1 = find((x(i) < sample.pickup_longitude) & (sample.pickup_longitude < x(i+1)));
+            idx2 = find((y(j) < sample.pickup_latitude) & (sample.pickup_latitude < y(j+1)));
+            idx3 = find(sample.Hour == hour);
+
+            %add conditional statements to retrieve data on upper limits
+    
+            n = numel( intersect(  intersect(idx1, idx2), idx3 ));
+            DensityMat(i, j, hour+1) = n;
+    
+        end
+    end
+end
+
+DensityMat = flipud(DensityMat);
+
+% Density matrix visualised for each hour of the day
+figure;
+tiledlayout('flow');
+for i = 1:24
+    nexttile;
+    image = DensityMat(:, :, i);
+    imagesc(squeeze(image));
+    %ADD TITLES AND LABELS
+end
+
+
+%% ML Algorithm
+
+%Re-shape density matrix to 1D
+
+DensityMat1D = reshape(DensityMat, 1,[], 24);
+
+
+
+
+
 
