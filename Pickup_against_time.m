@@ -95,17 +95,17 @@ title('Total number of pickups from sample dataset, during each hour', 'FontSize
 
 
 %Busiest time of day
-[max idx] = max(total);
-fprintf('The busiest time of day is between %s, with %d total pick-ups within this hour.\n', string(times(idx)) , max)
+[maxDay idx] = max(total);
+fprintf('The busiest time of day is between %s, with %d total pick-ups within this hour.\n', string(times(idx)) , maxDay)
 
 %Quietest time of day
-[min idx] = min(total);
-fprintf('The quietest time of day is between %s, with %d total pick-ups within this hour.\n', string(times(idx)) , min)
+[minDay idx] = min(total);
+fprintf('The quietest time of day is between %s, with %d total pick-ups within this hour.\n', string(times(idx)) , minDay)
 
 
 %% Create a density matrix
 
-div = 100; %Number of divisions
+div = 100; %Number of divisions. TO-DO: A HYPERPARAMETER TO TUNE??
 
 x = linspace(lon_min, lon_max, div);
 y = linspace(lat_min, lat_max, div);
@@ -115,8 +115,8 @@ DensityMat = zeros(div, div, 24);
 for hour = 0:23
     for i=1:(div-1)
         for j = 1:(div-1)
-            idx1 = find((x(i) < sample.pickup_longitude) & (sample.pickup_longitude < x(i+1)));
-            idx2 = find((y(j) < sample.pickup_latitude) & (sample.pickup_latitude < y(j+1)));
+            idx1 = find((x(i) <= sample.pickup_longitude) & (sample.pickup_longitude < x(i+1)));
+            idx2 = find((y(j) <= sample.pickup_latitude) & (sample.pickup_latitude < y(j+1)));
             idx3 = find(sample.Hour == hour);
 
             %add conditional statements to retrieve data on upper limits
@@ -126,12 +126,13 @@ for hour = 0:23
     
         end
     end
+    DensityMat(:, :, hour+1) = DensityMat(:, :, hour+1) ./ max(DensityMat(:, :, hour+1));
 end
 
 DensityMat = flipud(DensityMat);
 
 % Density matrix visualised for each hour of the day
-figure;
+figure('units','normalized','outerposition',[0 0 1 1]);
 tiledlayout('flow');
 for i = 1:24
     nexttile;
@@ -141,14 +142,85 @@ for i = 1:24
 end
 
 
-%% ML Algorithm
+%% ML Algorithm - predict local pickup density by location
 
-%Re-shape density matrix to 1D
-
-DensityMat1D = reshape(DensityMat, 1,[], 24);
-
-
-
-
+[Xloc, Yloc, Zloc] = meshgrid(1:div, 1:div, 1:24);
+Xloc = Xloc(:);
+Yloc = Yloc(:);
+Zloc = Zloc(:);
+locations = [Xloc, Yloc, Zloc];
 
 
+%%
+svmr = fitrsvm(locations, DensityMat(:)); %Support vector machine regression
+
+
+%% Now import test data to find accuracy
+
+testSample = readtable('test_cleaned.csv');
+
+%Clean up
+testSample.Hour = floor(testSample.Time);
+testSample(find(testSample.pickup_longitude < lon_min),:) = [];
+testSample(find(testSample.pickup_longitude >= lon_max),:) = [];
+testSample(find(testSample.pickup_latitude < lat_min),:) = [];
+testSample(find(testSample.pickup_latitude >= lat_max),:) = [];
+
+
+%Create a density matrix for the test data
+
+testDensityMat = zeros(div, div, 24);
+
+for hour = 0:23
+    for i=1:(div-1)
+        for j = 1:(div-1)
+            idx1 = find((x(i) <= testSample.pickup_longitude) & (testSample.pickup_longitude < x(i+1)));
+            idx2 = find((y(j) <= testSample.pickup_latitude) & (testSample.pickup_latitude < y(j+1)));
+            idx3 = find(testSample.Hour == hour);
+
+            %add conditional statements to retrieve data on upper limits
+    
+            n = numel( intersect(  intersect(idx1, idx2), idx3 ));
+            testDensityMat(i, j, hour+1) = n;
+    
+        end
+    end
+    testDensityMat(:, :, hour+1) = testDensityMat(:, :, hour+1) ./ max(testDensityMat(:, :, hour+1));
+end
+
+testDensityMat = flipud(testDensityMat);
+
+
+% Test data:
+Xtest = [testSample.pickup_longitude, testSample.pickup_latitude, randi([0, 23], size(testSample,1), 1)];
+Xtest(:, 1) = ((Xtest(:, 1) - x(1)) ./ (x(2)-x(1))) + 1; %NOT quite correct??
+Xtest(:, 2) = ((Xtest(:, 2) - y(1)) ./ (y(2)-y(1))) + 1; %NOT quite correct??
+Xtest(:, 3) = (Xtest(:, 3) + 1);
+
+
+%%
+%Create a predictor function
+Ypred = predict(svmr, Xtest);
+
+% Calculate true Y values
+Ytrue = zeros(size(testSample, 1), 1);
+for i = 1:size(testSample, 1)
+    pos1 = (find(x > testSample.pickup_longitude(i), 1)) - 1;
+    pos2 = (find(y > testSample.pickup_latitude(i), 1)) - 1;
+    pos3 = testSample.Hour(i) + 1; 
+    Ytrue(i, 1) = testDensityMat(pos1, pos2, pos3);
+end
+
+
+%%
+% Calculate RMSE
+RMSE = sqrt(mean((Ytrue - Ypred).^2));
+
+% Display RMSE
+fprintf('Root mean squared error = %f\n', RMSE);
+
+%Mean squared error
+mae = meanabs(Ypred - Ytrue);
+
+% Display the result
+fprintf('Mean squared error = %f\n', mae);
