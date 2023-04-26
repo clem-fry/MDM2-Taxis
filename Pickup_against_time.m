@@ -34,7 +34,7 @@ figure('units','normalized','outerposition',[0 0 1 1]);
 
 obj = VideoWriter('animation', 'MPEG-4');
 obj.Quality = 100;
-obj.FrameRate = 1.5;
+obj.FrameRate = 2;
 open(obj);
 
 for i = 0:23
@@ -89,8 +89,8 @@ hour = 1:24;
 figure('units','normalized','outerposition',[0 0 1 1]);
 bar(hour, total);
 xlim([0.35 24.65]);
-xlabel('Hour of day (ranging from the first hour to the twenty-fourth hour)');
-ylabel('Total number of pickups');
+xlabel('Hour of day (ranging from the first hour to the twenty-fourth hour)', 'FontSize', 15);
+ylabel('Total number of pickups', 'FontSize', 15);
 title('Total number of pickups from sample dataset, during each hour', 'FontSize', 15);
 
 
@@ -131,16 +131,36 @@ end
 
 DensityMat = flipud(DensityMat);
 
-% Density matrix visualised for each hour of the day
+% Density matrix (training data) visualised for each hour of the day
 figure('units','normalized','outerposition',[0 0 1 1]);
 tiledlayout('flow');
 for i = 1:24
     nexttile;
     image = DensityMat(:, :, i);
     imagesc(squeeze(image));
-    %ADD TITLES AND LABELS
+    title_str = ['Hour ', num2str(i)];
+    title(title_str, 'FontSize',15);
 end
+sgtitle('Visualised Density Matrix for the Training Data, for each Hour of the Day', 'Fontsize', 20);
 
+
+%Create a video from above
+obj = VideoWriter('animationTrainMat', 'MPEG-4');
+obj.Quality = 100;
+obj.FrameRate = 2;
+open(obj);
+figure;
+for i = 1:24
+    image = DensityMat(:, :, i);
+    imagesc(squeeze(image));
+    title_str = ['Hour ', num2str(i)];
+    title(title_str, 'FontSize',15);
+    %Add current frame to video
+    f = getframe(gcf);
+    writeVideo(obj,f);
+    pause(0.1);
+end
+obj.close();
 
 %% ML Algorithm - predict local pickup density by location
 
@@ -189,6 +209,19 @@ for hour = 0:23
 end
 
 testDensityMat = flipud(testDensityMat);
+
+
+% Density matrix (testing data) visualised for each hour of the day
+figure('units','normalized','outerposition',[0 0 1 1]);
+tiledlayout('flow');
+for i = 1:24
+    nexttile;
+    image = testDensityMat(:, :, i);
+    imagesc(squeeze(image));
+    title_str = ['Hour ', num2str(i)];
+    title(title_str, 'FontSize',15);
+end
+sgtitle('Visualised Density Matrix for the Testing Data, for each Hour of the Day', 'Fontsize', 20);
 
 
 % Test data:
